@@ -119,17 +119,27 @@ impl Discovery {
         self.discv5.nodes_by_distance(distances)
     }
 
-    /// Returns list of nodes (max 32) closer to content than self.
+    /// Returns list of nodes (max 32) closer to content than self, sorted by distance.
     pub fn find_nodes_close_to_content(&self, content_key: Vec<u8>) -> Vec<SszEnr> {
         let self_node_id = self.local_enr().node_id();
         let self_distance = xor_two_values(&content_key, &self_node_id.raw().to_vec());
-        // TODO: sort these by distance to return the closest 32 nodes
-        self.discv5
+
+        let mut closest_nodes: Vec<Enr> = self
+            .discv5
             .table_entries_enr()
             .into_iter()
             .filter(|enr| {
                 xor_two_values(&content_key, &enr.node_id().raw().to_vec()) < self_distance
             })
+            .collect();
+
+        closest_nodes.sort_by(|a, b| {
+            xor_two_values(&content_key, &a.node_id().raw().to_vec())
+                .cmp(&xor_two_values(&content_key, &b.node_id().raw().to_vec()))
+        });
+
+        closest_nodes
+            .into_iter()
             .take(32)
             .map(|enr| SszEnr::new(enr))
             .collect()
