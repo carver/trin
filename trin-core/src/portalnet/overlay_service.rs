@@ -987,6 +987,13 @@ where
 
     /// Sends a TALK request via Discovery v5 to some destination node.
     fn send_talk_req(&self, request: Request, request_id: OverlayRequestId, destination: Enr) {
+        if let Request::Offer(_) = request {
+            debug!(
+                "************** Sending Offer {:?} to {}",
+                request, destination
+            );
+        };
+
         let discovery = Arc::clone(&self.discovery);
         let protocol = self.protocol.clone();
         let response_tx = self.response_tx.clone();
@@ -1247,6 +1254,7 @@ where
                 .expect("Unable to build content payload: {msg:?}");
 
             // send the content to the acceptor over a uTP stream
+            debug!("Sending content to accepting peer over UTP");
             if let Err(err) = conn.send_to(&content_payload).await {
                 warn!("Error sending content {err}");
             };

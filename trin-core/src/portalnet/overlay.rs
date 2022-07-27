@@ -351,10 +351,12 @@ where
 
             // Continue if no nodes are interested in the content
             if interested_enrs.is_empty() {
-                debug!("No nodes interested in neighborhood gossip: content_key={} num_nodes_checked={}",
-                    hex_encode(content_key.into()), all_nodes.len());
+                debug!("No nodes interested in neighborhood gossip: content_key={} content_id={} num_nodes_checked={}",
+                    hex_encode(content_key.clone().into()), hex_encode(content_key.content_id()), all_nodes.len());
                 continue;
             }
+            debug!("****************** Found nodes for neighborhood gossip! content_key={} content_id={} num_nodes_checked={}",
+                    hex_encode(content_key.clone().into()), hex_encode(content_key.content_id()), all_nodes.len());
 
             // TEMPORARILY REMOVED: Get log2 random ENRs to gossip
 
