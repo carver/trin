@@ -344,7 +344,7 @@ where
                 .into_iter()
                 .filter(|node| {
                     XorMetric::distance(&content_key.content_id(), &node.key.preimage().raw())
-                        < node.value.data_radius()
+                        < U256::MAX / 8
                 })
                 .map(|node| node.value.enr())
                 .collect();
@@ -356,19 +356,12 @@ where
                 continue;
             }
 
-            // Get log2 random ENRs to gossip
-            let random_enrs = match log2_random_enrs(interested_enrs) {
-                Ok(val) => val,
-                Err(msg) => {
-                    debug!("Error calculating log2 random enrs for gossip propagation: {msg}");
-                    return 0;
-                }
-            };
+            // TEMPORARILY REMOVED: Get log2 random ENRs to gossip
 
             // Temporarily store all randomly selected nodes with the content of interest.
             // We want this so we can offer all the content to interested node in one request.
             let raw_item = (content_key.into(), content_value);
-            for enr in random_enrs {
+            for enr in interested_enrs {
                 enrs_and_content
                     .entry(enr.to_base64())
                     .or_default()
@@ -729,6 +722,7 @@ where
 }
 
 /// Randomly select log2 nodes. log2() is stable only for floats, that's why we cast it first to f32
+#[allow(dead_code)]
 fn log2_random_enrs(enrs: Vec<Enr>) -> anyhow::Result<Vec<Enr>> {
     if enrs.is_empty() {
         return Err(anyhow!("Expected non-empty vector of ENRs"));
