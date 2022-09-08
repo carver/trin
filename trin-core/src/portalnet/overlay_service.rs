@@ -816,10 +816,9 @@ where
     fn handle_request(
         &mut self,
         request: Request,
-        id: RequestId,
+        _id: RequestId,
         source: &NodeId,
     ) -> Result<Response, OverlayRequestError> {
-        debug!("[{:?}] Handling request {}", self.protocol, id);
         match request {
             Request::Ping(ping) => Ok(Response::Pong(self.handle_ping(ping, &source))),
             Request::FindNodes(find_nodes) => {
@@ -837,11 +836,7 @@ where
     }
 
     /// Builds a `Pong` response for a `Ping` request.
-    fn handle_ping(&self, request: Ping, source: &NodeId) -> Pong {
-        debug!(
-            "[{:?}] Handling ping request from node={}. Ping={:?}",
-            self.protocol, source, request
-        );
+    fn handle_ping(&self, _request: Ping, _source: &NodeId) -> Pong {
         self.metrics
             .as_ref()
             .and_then(|m| Some(m.report_inbound_ping()));
@@ -1099,15 +1094,10 @@ where
     /// Processes a failed request intended for some destination node.
     fn process_request_failure(
         &mut self,
-        request_id: OverlayRequestId,
+        _request_id: OverlayRequestId,
         destination: Enr,
-        error: OverlayRequestError,
+        _error: OverlayRequestError,
     ) {
-        debug!(
-            "[{:?}] Request {} failed. Error: {}",
-            self.protocol, request_id, error
-        );
-
         // Attempt to mark the node as disconnected.
         let node_id = destination.node_id();
         let _ = self.update_node_connection_state(node_id, ConnectionState::Disconnected);
@@ -1271,10 +1261,6 @@ where
     /// Refreshes the node if necessary. Attempts to mark the node as connected.
     fn process_pong(&mut self, pong: Pong, source: Enr) {
         let node_id = source.node_id();
-        debug!(
-            "[{:?}] Processing Pong response from node. Node: {}",
-            self.protocol, node_id
-        );
         // If the ENR sequence number in pong is less than the ENR sequence number for the routing
         // table entry, then request the node.
         //
@@ -1294,12 +1280,6 @@ where
 
     /// Processes a Nodes response.
     fn process_nodes(&mut self, nodes: Nodes, source: Enr, query_id: Option<QueryId>) {
-        debug!(
-            "[{:?}] Processing Nodes response from node. Node: {}",
-            self.protocol,
-            source.node_id()
-        );
-
         let enrs: Vec<Enr> = nodes
             .enrs
             .into_iter()
@@ -1443,7 +1423,6 @@ where
                 };
                 match kbuckets.insert_or_update(&key, node, status) {
                     InsertResult::Inserted => {
-                        debug!("Discovered node added to routing table. Node: {}", node_id);
                         self.peers_to_ping.insert(node_id);
                     }
                     InsertResult::Pending { disconnected } => {
@@ -1459,12 +1438,7 @@ where
                             self.ping_node(&node_to_ping.value().enr());
                         }
                     }
-                    _ => {
-                        debug!(
-                            "Discovered node not added to routing table. Node: {}",
-                            node_id
-                        );
-                    }
+                    _ => {}
                 }
             }
         }
@@ -1590,12 +1564,6 @@ where
 
     /// Submits a request to ping a destination (target) node.
     fn ping_node(&self, destination: &Enr) {
-        debug!(
-            "[{:?}] Sending Ping request to node. Node: {}",
-            self.protocol,
-            destination.node_id()
-        );
-
         let enr_seq = self.local_enr().seq();
         let data_radius = self.data_radius();
         let custom_payload = CustomPayload::from(data_radius.as_ssz_bytes());
@@ -1641,10 +1609,6 @@ where
         match self.kbuckets.write().insert_or_update(&key, node, status) {
             InsertResult::Inserted => {
                 // The node was inserted into the routing table. Add the node to the ping queue.
-                debug!(
-                    "[{:?}] New connected node added to routing table. Node: {}",
-                    self.protocol, node_id
-                );
                 self.peers_to_ping.insert(node_id);
             }
             InsertResult::Pending { disconnected } => {
@@ -1661,20 +1625,12 @@ where
             } => {
                 // The node existed in the routing table, and it was updated to connected.
                 if promoted_to_connected {
-                    debug!(
-                        "[{:?}] Node promoted to connected. Node: {}",
-                        self.protocol, node_id
-                    );
                     self.peers_to_ping.insert(node_id);
                 }
             }
             InsertResult::ValueUpdated | InsertResult::UpdatedPending => {}
-            InsertResult::Failed(reason) => {
+            InsertResult::Failed(_reason) => {
                 self.peers_to_ping.remove(&node_id);
-                debug!(
-                    "[{:?}] Could not insert node. Node: {}, Reason: {:?}",
-                    self.protocol, node_id, reason
-                );
             }
         }
 
@@ -1705,13 +1661,7 @@ where
                     Err(other)
                 }
             },
-            _ => {
-                debug!(
-                    "[{:?}] Node set to {:?}. Node: {}",
-                    self.protocol, state, node_id
-                );
-                Ok(())
-            }
+            _ => Ok(()),
         }
     }
 
